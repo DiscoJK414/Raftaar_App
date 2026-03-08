@@ -14,10 +14,13 @@ def preprocess(image_path):
     hsv1=cv2.cvtColor(blur1,cv2.COLOR_BGR2HSV)
 
     #Create masks
-    blue=cv2.inRange(hsv1,(100,150,0),(140,255,255))
-    yellow=cv2.inRange(hsv1,(22,100,100),(30,255,255))
-    orange=cv2.inRange(hsv1,(5,150,150),(20,255,255))
-
+    # Create masks
+    blue = cv2.inRange(hsv1, (95,80,60), (135,255,255))
+    yellow = cv2.inRange(hsv1, (18,80,80), (40,255,255))
+    orange1 = cv2.inRange(hsv1, (0,120,120), (10,255,255))
+    orange2 = cv2.inRange(hsv1, (10,100,100), (18,255,255))
+    orange = cv2.bitwise_or(orange1, orange2)
+    orange = cv2.bitwise_and(orange, cv2.bitwise_not(yellow))
     #Filtered images
     bluef=cv2.bitwise_and(image1,image1,mask=blue)
     yellowf=cv2.bitwise_and(image1,image1,mask=yellow)
@@ -25,7 +28,14 @@ def preprocess(image_path):
 
     #Combined masks
     combmask=cv2.bitwise_or(blue,yellow)
-    combmask=cv2.bitwise_or(combmask,orange)
+
+
+    combmask = cv2.bitwise_or(combmask,orange)
+    h = combmask.shape[0]
+
+    roi = np.zeros_like(combmask)
+    roi[int(h*0.4):,:] = 255
+    combmask=cv2.bitwise_and(combmask,roi)
 
     #Edge Detection
     edges=cv2.Canny(combmask,50,150)
@@ -35,22 +45,22 @@ def preprocess(image_path):
     box=[]
     for i in contours:
         area=cv2.contourArea(i)
-        if(area<30):
+        if(area<5):
             continue
-        x,y,w,h=cv2.boundingRect(i)
+        x,y,w,h1=cv2.boundingRect(i)
 
-         # Aspect ratio filter (cones are taller than wide)
-        aspect_ratio = h / float(w)
-        if aspect_ratio < 0.8 or aspect_ratio > 6:
+         # Aspect ratio filter
+        aspect_ratio = h1 / float(w)
+        if aspect_ratio < 0.8 or aspect_ratio > 8:
             continue
         cx=int(x+w/2)
-        cy=int(y+h/2)
+        cy=int(y+h1/2)
 
         height.append(h)
-        box.append((x,y,w,h,cx,cy))
+        box.append((x,y,w,h1,cx,cy))
 
     if(len(height)>0):
-        depth=np.array([1.0/h for h in height])
+        depth=np.array([1.0/h2 for h2 in height])
         geometricMean=np.prod(depth)**(1.0/len(depth))
         r=depth/geometricMean
     
